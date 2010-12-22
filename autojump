@@ -145,8 +145,8 @@ elif ('--remove','') in optlist and ('--completion', '') not in optlist:
         if dicremove(path_dict,args[-1]):
             save(path_dict,dic_file)
     except:
-        print "usage : autojump --remove key"
-        print "Remove key from autojump database"
+        print("usage : autojump --remove key")
+        print("Remove key from autojump database")
         exit
 elif ('--purge','') in optlist:
     try:
@@ -157,8 +157,8 @@ elif ('--purge','') in optlist:
                 dicremove(path_dict,path)
         save(path_dict,dic_file)
     except:
-        print "usage : autojump --purge MaxKeyWeight"
-        print "Remove all keys <= MaxKeyWeight"
+        print("usage : autojump --purge MaxKeyWeight")
+        print("Remove all keys <= MaxKeyWeight")
         exit        
 elif ('--stat','') in optlist:
     a=list(path_dict.items())

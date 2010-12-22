@@ -15,6 +15,9 @@
 #along with autojump.  If not, see <http://www.gnu.org/licenses/>.
 
 #This shell snippet sets the prompt command and the necessary aliases
+
+MODE_AUTO=0
+
 _autojump() 
 {
         local cur
@@ -24,17 +27,20 @@ _autojump()
             COMPREPLY=("${COMPREPLY[@]}" "${i}")
         done  < <(autojump --bash --completion $cur)
 }
-complete -o dirnames -F _autojump j
+
+complete -o dirnames -F _autojump cd
 complete -F _autojump autojump
-#data_dir=${XDG_DATA_HOME:-$([ -e ~/.local/share ] && echo ~/.local/share || echo ~)}
+
 data_dir=$([ -e ~/.local/share ] && echo ~/.local/share || echo ~)
 export AUTOJUMP_HOME=${HOME}
+
 if [[ "$data_dir" = "${HOME}" ]]
 then
     export AUTOJUMP_DATA_DIR=${data_dir}
 else
     export AUTOJUMP_DATA_DIR=${data_dir}/autojump
 fi
+
 if [ ! -e "${AUTOJUMP_DATA_DIR}" ]
 then
     mkdir "${AUTOJUMP_DATA_DIR}"
@@ -43,22 +49,50 @@ then
     mv ~/.autojump_errors "${AUTOJUMP_DATA_DIR}/autojump_errors" 2>>/dev/null
 fi
 
-AUTOJUMP='{ [[ "$AUTOJUMP_HOME" == "$HOME" ]] && (autojump -a "$(pwd -P)"&)>/dev/null 2>>${AUTOJUMP_DATA_DIR}/autojump_errors;} 2>/dev/null'
-# if [[ ! $PROMPT_COMMAND =~ autojump ]]; then
-#   export PROMPT_COMMAND="${PROMPT_COMMAND:-:} ; $AUTOJUMP"
-# fi 
 alias jumpstat="autojump --stat"
-function j { 
-    new_path="$(autojump $@)"
-    if [ -n "$new_path" ]; then 
-	echo -e "\\033[31m${new_path}\\033[0m"
-	cd "$new_path";
-	autojump -a "$(pwd -P)" >/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
+alias cd="j"
+
+function j {    
+    new_path=""
+    jump=0
+    error=0
+
+    if [ $# -eq 0 ] ; then
+	\cd >/dev/null
+	new_path="$(pwd -P)"
     else
-	if [ -d "$@" ] ; then
-	    cd "$@"
-	    echo -e "\\033[31m$(pwd -P)\\033[0m"
-	    autojump -a "$(pwd -P)" >/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
-	fi	    
+	case "$1" in
+	    "-")
+		\cd "$1" && new_path="$(pwd -P)" || error=1
+		;;
+	    "\.\.*")
+		\cd "$1" && new_path="$(pwd -P)" || error=1
+		;;
+	    "/*")
+		\cd "$1" && new_path="$(pwd -P)" || error=1
+		;;
+	    *)
+		jump=1
+		new_path="$(autojump $@)"
+		;;
+	    esac
+    fi
+
+    [ $error -eq 1 ] && return
+    
+    if [ -n "$new_path" ]; then 
+	if [ $jump = 1 ] ; then
+	    \cd "$new_path" > /dev/null || error=1
+	    if [ $error -eq 0 ] ; then
+		if [ $MODE_AUTO -eq 1 ] ; then
+		    echo -e "\\033[31m${new_path}\\033[0m"
+		    autojump -a "$(pwd -P)" >/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors || echo "${new_path}"
+		else
+		    echo "$new_path"
+		fi
+	    fi
+	fi
+    else
+	[ -d "$1" ] && \cd "$1" && [ $MODE_AUTO -eq 1 ] && autojump -a "$(pwd -P)" >/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
     fi    
 }
