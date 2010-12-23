@@ -29,6 +29,7 @@ from tempfile import NamedTemporaryFile
 from operator import itemgetter
 import os
 import signal
+from optparse import OptionParser
 
 max_keyweight = 1000
 max_stored_paths = 600
@@ -132,113 +133,137 @@ def open_dic(dic_file, error_recovery=False):
             return open_dic(dic_file, True)
         else: return {} #if everything fails, return an empty file
 
-#Main code
-try:
-    optlist, args = getopt.getopt(argv[1:], 'a',['remove', 'purge', 'stat','import','completion', 'bash']) 
-except getopt.GetoptError as e:
-    print("Unknown command line argument: %s" % e)
-    exit(1)
-
-if config_dir == os.path.expanduser("~"):
-    dic_file = config_dir+"/.autojump_py"
-else:
-    dic_file = config_dir+"/autojump_py"
-
-path_dict = open_dic(dic_file)
-
-if ('-a','') in optlist:
-    if not args:
-        print("usage : autojump -a path", file=stderr)
-        print("Add path to the database", file=stderr)
-        exit(-1)
-    if(args[-1] != os.path.expanduser("~")): # home dir can be reached quickly by "cd" and may interfere with other directories
-        dicadd(path_dict, os.path.abspath(args[-1]))
-        save(path_dict, dic_file)
-elif ('--remove','') in optlist and ('--completion', '') not in optlist:
-    if not args:
-        print("usage : autojump --remove key", file=stderr)
-        print("Remove key from autojump database", file=stderr)
-        exit(-1)
-    if dicremove(path_dict, args[-1]):
-        save(path_dict, dic_file)
-    else:
-        print("Key %s not found" % (args[-1]), file=stderr)
-elif ('--purge','') in optlist:
-    if not args:
-        print("usage : autojump --purge MaxKeyWeight", file=stderr)
-        print("Remove all keys <= MaxKeyWeight", file=stderr)
-        exit(-1)     
-    a = path_dict.items()
-    limit = int(args[-1])
-    for path,count in a:
-        if count <= limit:
-            dicremove(path_dict, path)
-        save(path_dict, dic_file)
-elif ('--stat','') in optlist:
+def stat():
     a = list(path_dict.items())
     a.sort(key=itemgetter(1))
     for path,count in a[-100:]:
         print("%.1f:\t%s" % (count,path), file=stderr)
     print("Total key weight: %d. Number of stored paths: %d" % (sum(path_dict.values()),len(a)), file=stderr)
-    exit(1)
-elif ('--import','') in optlist:
-    for i in open(args[-1]).readlines():
-        dicadd(path_dict, i[:-1])
-    pickle.dump(path_dict, open(dic_file,'w'), -1)
-else:
-    import re
-    completion = False
-    userchoice = -1 #i if the pattern is of the form __pattern__i, otherwise -1
-    results = []
-    if ('--completion','') in optlist:
-        completion = True
-        if not args: exit(0)
+
+#################################### Main code ####################################
+if __name__ == '__main__':
+    usage = '%prog [options]\n'\
+            'Easier file system navigation using command line'
+    optparser = OptionParser(usage=usage)
+
+    optparser.add_option('-a', '--add', dest='add',
+                         help='Add a new path to the database',
+                         metavar="path")
+    optparser.add_option('-r', '--remove', dest='remove',
+                         help='Remove a path from the database',
+                         metavar="path")
+    optparser.add_option('-p', '--purge', dest='purge',
+                         help='Purge the database for each key <= num',
+                         metavar="num")
+    optparser.add_option('-i', '--import', dest='imp',
+                         help='Import a database',
+                         metavar="database")
+    optparser.add_option('-s', '--stat', dest='stat',
+                         action="store_true",
+                         help='Show statistics')
+    optparser.add_option('-c', '--completion', dest='completion',
+                         action="store_true",
+                         help='Use autojump\'scompletion')
+    optparser.add_option('-b', '--bash', dest='bash',
+                         action="store_true",
+                         help='Current shell is bash')
+
+    (optlist, args) = optparser.parse_args(argv[1:])
+
+    if config_dir == os.path.expanduser("~"):
+        dic_file = config_dir+"/.autojump_py"
     else:
-        forget(path_dict, dic_file) #gradually forget about old directories
- 
-    if not args: patterns = [""]
-    else: patterns = args
+        dic_file = config_dir+"/autojump_py"
 
-    #if the last pattern contains a full path, jump there
-    #the regexp is because we need to support stuff like "j wo jo__3__/home/joel/workspace/joel" for zsh
-    last_pattern_path = re.sub("(.*)" + completion_separator, "", patterns[-1])
+    path_dict = open_dic(dic_file)
 
-    #print >> stderr, last_pattern_path
-    if len(last_pattern_path) > 0 and last_pattern_path[0] == "/" and os.path.exists(last_pattern_path):
-        if not completion: print(last_pattern_path)
-    else:
-        #check for ongoing completion, and act accordingly
-        endmatch = re.search(completion_separator + "([0-9]+)", patterns[-1]) #user has selected a completion
-        if endmatch:
-            userchoice = int(endmatch.group(1))
-            patterns[-1] = re.sub(completion_separator + "[0-9]+.*", "", patterns[-1])
-        else: #user hasn't selected a completion, display the same choices again
-            endmatch = re.match("(.*)" + completion_separator, patterns[-1])
-            if endmatch: patterns[-1] = endmatch.group(1)
-
-        dirs = list(path_dict.items())
-        dirs.sort(key = itemgetter(1), reverse=True)
-
-        if completion or userchoice != -1:
-            max_matches = 9
-        else:
-            max_matches = 1
-
-        find_matches(dirs, patterns, results, False, max_matches)
-
-        if completion or not results: #if not found, try ignoring case. On completion always show all results
-            find_matches(dirs, patterns, results, ignore_case=True, max_matches=max_matches) 
-        if not completion and clean_dict(dirs, path_dict): #keep the database to a reasonable size
+    if optlist.add:
+        if(optlist.add != os.path.expanduser("~")): # home dir can be reached quickly by "cd" and may interfere with other directories
+            dicadd(path_dict, os.path.abspath(optlist.add))
             save(path_dict, dic_file)
 
-        if completion and ('--bash', '') in optlist: quotes = '"'
-        else: quotes = ""
+    elif optlist.remove:
+        if dicremove(path_dict, optlist.remove):
+            save(path_dict, dic_file)
+        else:
+            print("Key %s not found" % (optlist.remove), file=stderr)
 
-        if userchoice != -1:
-            if len(results) > userchoice-1 : print(quotes+results[userchoice-1]+quotes)
-        elif len(results) > 1 and completion:
-            print("\n" . join(("%s%s%d%s%s" % (patterns[-1], completion_separator, n+1, completion_separator, r)\
-                for n,r in enumerate(results[:8]))))
-        elif results: print(quotes + results[0] + quotes)
-    exit(0)
-exit(1)
+    elif optlist.purge:
+        limit = int(optlist.purge)
+        if limit <= 0:
+            print("Error : num must be positive", file=stderr)
+            exit(-1)
+        a = path_dict.items()
+        for path,count in a:
+            if count <= limit:
+                dicremove(path_dict, path)
+        save(path_dict, dic_file)
+        stat()
+
+    elif optlist.stat:
+        stat()
+
+    elif optlist.imp:
+        if not os.path.exists(optlist.imp):
+            print("Error database %s doesn't exists" % (optlist.imp), file=stderr)
+            exit(-1)
+        for i in open(optlist.imp).readlines():
+            dicadd(path_dict, i[:-1])
+        pickle.dump(path_dict, open(dic_file,'w'), -1)
+
+    # Autojump search
+    else:
+        import re
+
+        userchoice = -1 #i if the pattern is of the form __pattern__i, otherwise -1
+        results = []
+
+        if not optlist.completion:
+            forget(path_dict, dic_file) #gradually forget about old directories
+ 
+        if not args: patterns = [""]
+        else: patterns = args
+
+        #if the last pattern contains a full path, jump there
+        #the regexp is because we need to support stuff like "j wo jo__3__/home/joel/workspace/joel" for zsh
+        last_pattern_path = re.sub("(.*)" + completion_separator, "", patterns[-1])
+
+        #print >> stderr, last_pattern_path
+        if len(last_pattern_path) > 0 and last_pattern_path[0] == "/" and os.path.exists(last_pattern_path):
+            if not optlist.completion: print(last_pattern_path)
+        else:
+            #check for ongoing completion, and act accordingly
+            endmatch = re.search(completion_separator + "([0-9]+)", patterns[-1]) #user has selected a completion
+            if endmatch:
+                userchoice = int(endmatch.group(1))
+                patterns[-1] = re.sub(completion_separator + "[0-9]+.*", "", patterns[-1])
+            else: #user hasn't selected a completion, display the same choices again
+                endmatch = re.match("(.*)" + completion_separator, patterns[-1])
+                if endmatch: patterns[-1] = endmatch.group(1)
+
+            dirs = list(path_dict.items())
+            dirs.sort(key = itemgetter(1), reverse=True)
+
+            if optlist.completion or userchoice != -1:
+                max_matches = 9
+            else:
+                max_matches = 1
+
+            find_matches(dirs, patterns, results, False, max_matches)
+
+            if optlist.completion or not results: #if not found, try ignoring case. On completion always show all results
+                find_matches(dirs, patterns, results, ignore_case=True, max_matches=max_matches) 
+            if not optlist.completion and clean_dict(dirs, path_dict): #keep the database to a reasonable size
+                save(path_dict, dic_file)
+
+            if optlist.completion and optlist.bash: quotes = '"'
+            else: quotes = ""
+
+            if userchoice != -1:
+                if len(results) > userchoice-1 : print(quotes+results[userchoice-1]+quotes)
+            elif len(results) > 1 and optlist.completion:
+                print("\n" . join(("%s%s%d%s%s" % (patterns[-1], completion_separator, n+1, completion_separator, r)\
+                                       for n,r in enumerate(results[:8]))))
+            elif results: print(quotes + results[0] + quotes)
+        exit(0)
+    exit(1)
