@@ -21,12 +21,20 @@ MODE_AUTO=0
 
 _autojump() 
 {
-        local cur
-        cur=${COMP_WORDS[*]:1}
-        while read i
-        do
-            COMPREPLY=("${COMPREPLY[@]}" "${i}")
-        done  < <(autojump --bash --completion $cur)
+    # No arguments or begining of a local directory --> directory completion
+    if [ $COMP_CWORD -eq 1 ] ; then
+	[ -z "${COMP_WORDS[1]}" ] && return
+	for i in ${COMP_WORDS[1]}* ; do
+	    [ -d "$i" ] && return
+	done
+    fi
+
+    local cur
+    cur=${COMP_WORDS[*]:1}
+    while read i
+    do
+        COMPREPLY=("${COMPREPLY[@]}" "${i}")
+    done  < <(autojump --bash --completion $cur)
 }
 
 complete -o dirnames -F _autojump cd
@@ -55,45 +63,33 @@ alias cd="j"
 
 function j {    
     new_path=""
-    jump=0
-    error=0
 
+    # No args, goto home
     if [ $# -eq 0 ] ; then
-	\cd >/dev/null
+	\cd >/dev/null || return
 	new_path="$(pwd -P)"
     else
 	case "$1" in
-	    "-")
-		\cd "$1" && new_path="$(pwd -P)" || error=1
-		;;
-	    "\.\.*")
-		\cd "$1" && new_path="$(pwd -P)" || error=1
-		;;
-	    "/*")
-		\cd "$1" && new_path="$(pwd -P)" || error=1
+	# Handle relative paths
+	    "-"|"\.\.*"|"/*"|"~.*")
+		\cd "$1" && new_path="$(pwd -P)" || return
 		;;
 	    *)
-		jump=1
-		new_path="$(autojump $@)"
+		if [ ! -d "$1" ] ; then
+		    new_path="$(autojump $@)"
+		    if [ -n "$new_path" ]; then 
+			\cd "$new_path" || return
+			[ $MODE_AUTO -eq 1 ] && echo -e "\\033[31m${new_path}\\033[0m" || echo "$new_path"
+		    fi
+		fi
 		;;
 	    esac
     fi
 
-    [ $error -eq 1 ] && return
-    
-    if [ -n "$new_path" ]; then 
-	if [ $jump = 1 ] ; then
-	    \cd "$new_path" > /dev/null || error=1
-	    if [ $error -eq 0 ] ; then
-		if [ $MODE_AUTO -eq 1 ] ; then
-		    echo -e "\\033[31m${new_path}\\033[0m"
-		    autojump -a "$(pwd -P)" >/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors || echo "${new_path}"
-		else
-		    echo "$new_path"
-		fi
-	    fi
-	fi
-    else
-	[ -d "$1" ] && \cd "$1" && [ $MODE_AUTO -eq 1 ] && autojump -a "$(pwd -P)" >/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
-    fi    
+    # Classic cd behaviour
+    if [ -z "$new_path" -a -d "$1" ] ; then
+	\cd "$1" || return
+    fi
+
+    [ $MODE_AUTO -eq 1 ] && autojump -a "$(pwd -P)" >/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
 }
