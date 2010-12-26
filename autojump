@@ -88,31 +88,12 @@ def clean_dict(path_dict):
     else: 
         return False
 
-def match(path, pattern, ignore_case=False, only_end=False):
-    if only_end:
-        match_string = "/" . join(path.split('/')[-1 - pattern.count('/'):])
-    else:
-        match_string = path
-    if ignore_case:
-        match = (match_string.lower().find(pattern) != -1)
-    else:
-        match = (match_string.find(pattern) != -1)
-    return match
-
-def find_matches(cur_path, dirs, patterns, result_list, ignore_case, max_matches):
+def find_matches(cur_path, dirs, pattern, result_list, ignore_case, max_matches):
     """Find max_matches paths that match the pattern, and add them to the result_list"""
-    if ignore_case:
-        pats = list(patterns)
-        for n,p in enumerate(pats):
-            pats[n] = p.lower()
-    else:
-        pats = patterns
-
     for path,count in dirs:
         if len(result_list) >= max_matches : break
-        if cur_path == path: continue
-        #For the last pattern, only match the end of the pattern
-        if (not path in result_list) and all(match(path, p, ignore_case, only_end = (n == len(pats)-1)) for n,p in enumerate(pats)):
+        if (cur_path == path) or (path in result_list): continue
+        if re.search(pattern, path, ignore_case and re.IGNORECASE):
             result_list.append(path)
 
 def open_dic(dic_file, error_recovery=False):
@@ -252,10 +233,17 @@ if __name__ == '__main__':
                 cur_path = ''
                 pass
 
-            find_matches(cur_path, dirs, patterns, results, False, max_matches)
+            pattern=""
+            for p in patterns[:-1]:
+                pattern = "%s.*%s.*" % (pattern, p)
+            
+            pattern = "%s/[^/]*%s[^/]*$" % (pattern, patterns[-1])
 
-            if (not results or len(results) < max_matches) and optlist.completion: #if not found, try ignoring case. On completion always show all results
-                find_matches(cur_path, dirs, patterns, results, ignore_case=True, max_matches=max_matches)
+            re_patterns = re.compile(pattern)
+            find_matches(cur_path, dirs, pattern, results, False, max_matches)
+
+            if not results or ((len(results) < max_matches) and optlist.completion): #if not found, try ignoring case. On completion always show all results
+                find_matches(cur_path, dirs, pattern, results, True, max_matches)
 
             if optlist.completion and optlist.bash: quotes = '"'
             else: quotes = ""

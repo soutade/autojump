@@ -80,7 +80,7 @@ function j {
 		    if [ -n "$new_path" ]; then 
 			\cd "$new_path" || return
 			echo -e "\\033[31m${new_path}\\033[0m"
-			autojump -a "$(pwd -P)" >/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
+			autojump -a "$(pwd -P)" #>/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
 			return
 		    fi
 		fi
@@ -93,5 +93,5 @@ function j {
 	\cd "$1" || return
     fi
 
-    [ $MODE_AUTO -eq 1 ] && autojump -a "$(pwd -P)" >/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
+    [ $MODE_AUTO -eq 1 ] && autojump -a "$(pwd -P)" #>/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
 }
