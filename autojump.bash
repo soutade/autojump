@@ -55,7 +55,6 @@ then
     mkdir "${AUTOJUMP_DATA_DIR}"
     mv ~/.autojump_py "${AUTOJUMP_DATA_DIR}/autojump_py" 2>>/dev/null #migration
     mv ~/.autojump_py.bak "${AUTOJUMP_DATA_DIR}/autojump_py.bak" 2>>/dev/null
-    mv ~/.autojump_errors "${AUTOJUMP_DATA_DIR}/autojump_errors" 2>>/dev/null
 fi
 
 alias jumpstat="autojump --stat"
@@ -80,7 +79,7 @@ function j {
 		    if [ -n "$new_path" ]; then 
 			\cd "$new_path" || return
 			echo -e "\\033[31m${new_path}\\033[0m"
-			autojump -a "$(pwd -P)" #>/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
+			autojump -a "$(pwd -P)"
 			return
 		    fi
 		fi
@@ -93,5 +92,5 @@ function j {
 	\cd "$1" || return
     fi
 
-    [ $MODE_AUTO -eq 1 ] && autojump -a "$(pwd -P)" #>/dev/null 2>>${AUTOJUMP_DATA_DIR}/.autojump_errors
+    [ $MODE_AUTO -eq 1 ] && autojump -a "$(pwd -P)"
 }
