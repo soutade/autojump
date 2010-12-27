@@ -172,7 +172,7 @@ if __name__ == '__main__':
         else:
             print("Key '%s' not found" % (optlist.remove), file=stderr)
             
-    elif optlist.modify and not optlist.completion:
+    elif optlist.modify
         if not optlist.modify[0] in path_dict:
             print("Key '%s' not found" % (optlist.modify[0]), file=stderr)
         else:
