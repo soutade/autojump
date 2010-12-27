@@ -172,7 +172,7 @@ if __name__ == '__main__':
         else:
             print("Key '%s' not found" % (optlist.remove), file=stderr)
             
-    elif optlist.modify
+    elif optlist.modify:
         if not optlist.modify[0] in path_dict:
             print("Key '%s' not found" % (optlist.modify[0]), file=stderr)
         else:
@@ -184,6 +184,7 @@ if __name__ == '__main__':
             except ValueError:
                 print("Invalid value '%s'" % (optlist.modify[1]), file=stderr)
                 exit(-1)
+
     elif optlist.purge:
         limit = int(optlist.purge)
         if limit <= 0:
