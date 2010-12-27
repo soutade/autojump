@@ -133,7 +133,10 @@ if __name__ == '__main__':
     optparser.add_option('-r', '--remove', dest='remove',
                          help='Remove a path from the database',
                          metavar="path")
-    optparser.add_option('-p', '--purge', dest='purge',
+    optparser.add_option('-m', '--modify', dest='modify', nargs=2,
+                         help='Modify key weight',
+                         metavar="path key")
+    optparser.add_option('-p', '--purge', dest='purge', type="int",
                          help='Purge the database for each key <= num',
                          metavar="num")
     optparser.add_option('-i', '--import', dest='imp',
@@ -167,8 +170,20 @@ if __name__ == '__main__':
         if dicremove(path_dict, optlist.remove):
             save(path_dict, dic_file)
         else:
-            print("Key %s not found" % (optlist.remove), file=stderr)
-
+            print("Key '%s' not found" % (optlist.remove), file=stderr)
+            
+    elif optlist.modify and not optlist.completion:
+        if not optlist.modify[0] in path_dict:
+            print("Key '%s' not found" % (optlist.modify[0]), file=stderr)
+        else:
+            try:
+                value = int(optlist.modify[1])
+                if value < 0: raise ValueError
+                path_dict[optlist.modify[0]] = value
+                save(path_dict, dic_file)
+            except ValueError:
+                print("Invalid value '%s'" % (optlist.modify[1]), file=stderr)
+                exit(-1)
     elif optlist.purge:
         limit = int(optlist.purge)
         if limit <= 0:
