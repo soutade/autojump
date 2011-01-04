@@ -30,15 +30,15 @@ from operator import itemgetter
 import os
 from optparse import OptionParser
 
-max_keyweight = 1000
-max_stored_paths = 600
-completion_separator = '__'
-config_dir = os.environ.get("AUTOJUMP_DATA_DIR", os.path.expanduser("~"))
+MAX_KEYWEIGHT = 1000
+MAX_STORED_PATHS = 600
+COMPLETION_SEPARATOR = '__'
+CONFIG_DIR = os.environ.get("AUTOJUMP_DATA_DIR", os.path.expanduser("~"))
 
 def dicadd(dic, key, increment=1):
     value = dic.get(key, 0.)+increment
     dic[key] = value
-    if value > max_keyweight:
+    if value > MAX_KEYWEIGHT:
         forget(dic) #gradually forget about old directories
 
 def dicremove(dic, key):
@@ -52,7 +52,7 @@ def dicremove(dic, key):
     return True
 
 def save(path_dict, dic_file):
-    f = NamedTemporaryFile(dir=config_dir, delete=False)
+    f = NamedTemporaryFile(dir=CONFIG_DIR, delete=False)
     pickle.dump(path_dict, f, -1)
     f.flush()
     os.fsync(f)
@@ -69,15 +69,15 @@ def save(path_dict, dic_file):
 def forget(path_dict):
     """Gradually forget about directories. Only call from the actual jump since it can take time"""
     for k in path_dict.keys():
-        path_dict[k] *= 0.9 * max_keyweight / keyweight
+        path_dict[k] *= 0.9 * MAX_KEYWEIGHT / keyweight
 
 def clean_dict(path_dict):
-    """Limits the sized of the path_dict to max_stored_paths. Returns True if keys were deleted"""
-    if len(path_dict) > max_stored_paths:
+    """Limits the sized of the path_dict to MAX_STORED_PATHS. Returns True if keys were deleted"""
+    if len(path_dict) > MAX_STORED_PATHS:
         dirs = list(path_dict.items())
         dirs.sort(key = itemgetter(1), reverse=True)
         #remove 25 more than needed, to avoid doing it every time
-        for dir, dummy in dirs[max_stored_paths-25:]:
+        for dir, dummy in dirs[MAX_STORED_PATHS-25:]:
             del path_dict[dir]
         return True
     else: 
@@ -149,10 +149,10 @@ if __name__ == '__main__':
 
     (optlist, args) = optparser.parse_args(argv[1:])
 
-    if config_dir == os.path.expanduser("~"):
-        dic_file = config_dir+"/.autojump_py"
+    if CONFIG_DIR == os.path.expanduser("~"):
+        dic_file = CONFIG_DIR+"/.autojump_py"
     else:
-        dic_file = config_dir+"/autojump_py"
+        dic_file = CONFIG_DIR+"/autojump_py"
 
     path_dict = open_dic(dic_file)
 
@@ -215,19 +215,19 @@ if __name__ == '__main__':
 
         #if the last pattern contains a full path, jump there
         #the regexp is because we need to support stuff like "j wo jo__3__/home/joel/workspace/joel" for zsh
-        last_pattern_path = re.sub("(.*)" + completion_separator, "", patterns[-1])
+        last_pattern_path = re.sub("(.*)" + COMPLETION_SEPARATOR, "", patterns[-1])
 
         #print >> stderr, last_pattern_path
         if len(last_pattern_path) > 0 and last_pattern_path[0] == "/":
             if not optlist.completion: print(last_pattern_path)
         else:
             #check for ongoing completion, and act accordingly
-            endmatch = re.search(completion_separator + "([0-9]+)", patterns[-1]) #user has selected a completion
+            endmatch = re.search(COMPLETION_SEPARATOR + "([0-9]+)", patterns[-1]) #user has selected a completion
             if endmatch:
                 userchoice = int(endmatch.group(1))
-                patterns[-1] = re.sub(completion_separator + "[0-9]+.*", "", patterns[-1])
+                patterns[-1] = re.sub(COMPLETION_SEPARATOR + "[0-9]+.*", "", patterns[-1])
             else: #user hasn't selected a completion, display the same choices again
-                endmatch = re.match("(.*)" + completion_separator, patterns[-1])
+                endmatch = re.match("(.*)" + COMPLETION_SEPARATOR, patterns[-1])
                 if endmatch: patterns[-1] = endmatch.group(1)
 
             dirs = list(path_dict.items())
@@ -262,7 +262,7 @@ if __name__ == '__main__':
             if userchoice != -1:
                 if len(results) > userchoice-1 : print(quotes+results[userchoice-1]+quotes)
             elif len(results) > 1 and optlist.completion:
-                print("\n" . join(("%s%s%d%s%s" % (patterns[-1], completion_separator, n+1, completion_separator, r)\
+                print("\n" . join(("%s%s%d%s%s" % (patterns[-1], COMPLETION_SEPARATOR, n+1, COMPLETION_SEPARATOR, r)\
                                        for n,r in enumerate(results[:8]))))
             elif results: print(quotes + results[0] + quotes)
         exit(0)
