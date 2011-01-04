@@ -28,17 +28,12 @@ from sys import argv, exit, stderr, version_info
 from tempfile import NamedTemporaryFile
 from operator import itemgetter
 import os
-import signal
 from optparse import OptionParser
 
 max_keyweight = 1000
 max_stored_paths = 600
 completion_separator = '__'
 config_dir = os.environ.get("AUTOJUMP_DATA_DIR", os.path.expanduser("~"))
-
-def signal_handler(arg1, arg2):
-    print ("Received SIGINT, trying to continue")
-signal.signal(signal.SIGINT,signal_handler) #Don't break on sigint
 
 def dicadd(dic, key, increment=1):
     value = dic.get(key, 0.)+increment
