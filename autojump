@@ -255,7 +255,18 @@ if __name__ == '__main__':
 
             if not results or ((len(results) < max_matches) and optlist.completion): #if not found, try ignoring case. On completion always show all results
                 find_matches(cur_path, dirs, pattern, results, True, max_matches)
+                # If nothing is found, try to gather patterns
+                if not results and len(patterns) > 1:
+                    pattern = "^.*/"
+                    for p in patterns:
+                        pattern = "%s[^/]*%s" % (pattern, p)
+                    pattern = pattern + "[^/]*$"
 
+                    re_patterns = re.compile(pattern)
+                    find_matches(cur_path, dirs, pattern, results, False, max_matches)
+                    if not results:
+                        find_matches(cur_path, dirs, pattern, results, True, max_matches)
+                    
             if optlist.completion and optlist.bash: quotes = '"'
             else: quotes = ""
 
