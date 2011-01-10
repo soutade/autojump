@@ -134,9 +134,6 @@ if __name__ == '__main__':
     optparser.add_option('-p', '--purge', dest='purge', type="int",
                          help='Purge the database for each key <= num',
                          metavar="num")
-    optparser.add_option('-i', '--import', dest='imp',
-                         help='Import a database',
-                         metavar="database")
     optparser.add_option('-s', '--stat', dest='stat',
                          action="store_true",
                          help='Show statistics')
@@ -194,14 +191,6 @@ if __name__ == '__main__':
 
     elif optlist.stat:
         stat()
-
-    elif optlist.imp:
-        if not os.path.exists(optlist.imp):
-            print("Error database %s doesn't exists" % (optlist.imp), file=stderr)
-            exit(-1)
-        for i in open(optlist.imp).readlines():
-            dicadd(path_dict, i[:-1])
-        pickle.dump(path_dict, open(dic_file,'w'), -1)
 
     # Autojump search
     else:
